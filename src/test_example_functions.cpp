@@ -329,12 +329,12 @@ std::ostream& run_test(Test_name test, const std::string& name, std::ostream& os
 }
 
 void main_test() {
-    //RUN_TEST(TestAddDocument);
-    //RUN_TEST(TestSearchServerIterators);
-    //RUN_TEST(TestGetWordFrequencies);
+    RUN_TEST(TestAddDocument);
+    RUN_TEST(TestSearchServerIterators);
+    RUN_TEST(TestGetWordFrequencies);
     RUN_TEST(TestMatchDocument);
-    //RUN_TEST(TestRemoveDocument);
-    //RUN_TEST(TestRemoveDuplicates);
-    //RUN_TEST(TestParallelQueries);
-    //RUN_TEST(TestParallelQueriesJoined);
+    RUN_TEST(TestRemoveDocument);
+    RUN_TEST(TestRemoveDuplicates);
+    RUN_TEST(TestParallelQueries);
+    RUN_TEST(TestParallelQueriesJoined);
 }

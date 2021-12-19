@@ -20,17 +20,11 @@ extern const size_t MAX_RESULT_DOCUMENT_COUNT;
 class SearchServer {
 public:
     typedef std::set<int>::iterator SearchServerIterator;
-    //typedef std::vector<const int>::iterator const_SearchServerIterator;
     
     template <typename StringContainer>
     explicit SearchServer(const StringContainer&);
     explicit SearchServer(const std::string&);
     explicit SearchServer(std::string_view);
-    //SearchServer(SearchServer&) = delete;
-    //SearchServer(const SearchServer&) = delete;
-    
-    //SearchServer& operator=(SearchServer&) = delete;
-    //SearchServer& operator=(const SearchServer&) = delete;
 
     void AddDocument(int, std::string_view, DocumentStatus, const std::vector<int>&);
     //Sequanced FTDs
@@ -49,9 +43,7 @@ public:
     size_t GetDocumentCount() const;
     
     SearchServerIterator begin();
-    //const_SearchServerIterator begin() const;
     SearchServerIterator end();
-    //const_SearchServerIterator end() const;
 
     template<class ExecutionPolicy>
     std::tuple<std::vector<std::string_view>, DocumentStatus> MatchDocument(ExecutionPolicy&&, std::string_view, int) const;
@@ -173,18 +165,6 @@ std::tuple<std::vector<std::string_view>, DocumentStatus> SearchServer::MatchDoc
         }
         matched_words.shrink_to_fit();
     }
-    /*
-    std::vector<std::string_view> matched_words;
-    auto iter = matched_words.begin();
-    std::for_each(policy, query.plus_words.begin(), query.plus_words.end(),
-                  [this, &matched_words, &iter, id](const auto& word) {word_to_document_freqs_.count(word) && word_to_document_freqs_.at(word).count(id) ?
-                                                                       iter = std::next(matched_words.insert(iter, word)) : iter = iter;} );
-
-    if(std::any_of(policy, query.minus_words.begin(), query.minus_words.end(),
-                   [this, id] (const auto& word) {return word_to_document_freqs_.count(word) && word_to_document_freqs_.at(word).count(id);} )) {
-        matched_words.clear();
-    }
-    */
     return {matched_words, documents_.at(id).status};
 }
 
@@ -221,33 +201,6 @@ std::vector<Document> SearchServer::FindAllDocuments(Policy& policy, const Query
     for (const auto& [document_id, relevance] : matched_ids) {
         matched_documents.push_back({document_id, relevance, documents_.at(document_id).rating});
     }
-    /*
-    std::map<int, double> document_to_relevance;
-    for (const auto& word : query.plus_words) {
-        if (word_to_document_freqs_.count(word) == 0) {
-            continue;
-        }
-        const double inverse_document_freq = ComputeWordInverseDocumentFreq(word);
-        for (const auto [document_id, term_freq] : word_to_document_freqs_.at(word)) {
-            const auto& document_data = documents_.at(document_id);
-            if (document_predicate(document_id, document_data.status, document_data.rating)) {
-                document_to_relevance[document_id] += term_freq * inverse_document_freq;
-            }
-        }
-    }
-    for (const auto& word : query.minus_words) {
-        if (word_to_document_freqs_.count(word) == 0) {
-            continue;
-        }
-        for (const auto [document_id, _] : word_to_document_freqs_.at(word)) {
-            document_to_relevance.erase(document_id);
-        }
-    }
-    std::vector<Document> matched_documents;
-    for (const auto [document_id, relevance] : document_to_relevance) {
-        matched_documents.push_back({document_id, relevance, documents_.at(document_id).rating});
-    }
-    */
     return matched_documents;
 }
 

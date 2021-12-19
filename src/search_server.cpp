@@ -63,19 +63,9 @@ SearchServer::SearchServerIterator SearchServer::begin() {
     return document_ids_.begin();
 }
 
-/*
-SearchServer::const_SearchServerIterator SearchServer::begin() const {
-    return document_ids_.begin();
-}
-*/
 SearchServer::SearchServerIterator SearchServer::end() {
     return document_ids_.end();
 }
-/*
-SearchServer::const_SearchServerIterator SearchServer::end() const {
-    return document_ids_.end();
-}
-*/
 
 std::tuple<std::vector<std::string_view>, DocumentStatus> SearchServer::MatchDocument(std::string_view raw_query, int document_id) const {
     return MatchDocument(std::execution::seq, raw_query, document_id);

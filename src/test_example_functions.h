@@ -1,9 +1,9 @@
 #pragma once
 
 #include "log_duration.h"
+#include "remove_duplicates.h"
 #include "search_server.h"
 #include "string_processing.h"
-#include "remove_duplicates.h"
 
 #include <cassert>
 #include <numeric>
