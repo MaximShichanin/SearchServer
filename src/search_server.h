@@ -51,9 +51,9 @@ public:
     
     std::map<std::string_view, double> GetWordFrequencies(int) const;
     
-    void RemoveDocument(int);
     template<class ExecutionPolicy>
     void RemoveDocument(ExecutionPolicy&&, int);
+    void RemoveDocument(int);
 private:
     struct DocumentData {
         int rating;
@@ -130,13 +130,13 @@ std::vector<Document> SearchServer::FindTopDocuments(Policy& policy, std::string
 }
 
 template <typename Policy>
-std::vector<Document> SearchServer::FindTopDocuments(Policy& policy, std::string_view sv) const {
-    return FindTopDocuments(policy, sv, DocumentStatus::ACTUAL);
+std::vector<Document> SearchServer::FindTopDocuments(Policy& policy, std::string_view raw_query) const {
+    return FindTopDocuments(policy, raw_query, DocumentStatus::ACTUAL);
 }
 
 template <typename DocumentPredicate>
-std::vector<Document> SearchServer::FindTopDocuments(std::string_view sv, DocumentPredicate predicate) const {
-    return FindTopDocuments(std::execution::seq, sv, predicate);
+std::vector<Document> SearchServer::FindTopDocuments(std::string_view raw_query, DocumentPredicate predicate) const {
+    return FindTopDocuments(std::execution::seq, raw_query, predicate);
 }
 
 template<class ExecutionPolicy>
@@ -169,14 +169,18 @@ std::tuple<std::vector<std::string_view>, DocumentStatus> SearchServer::MatchDoc
 }
 
 template <typename Policy, typename DocumentPredicate>
-std::vector<Document> SearchServer::FindAllDocuments(Policy& policy, const Query& query, DocumentPredicate document_predicate) const {
+std::vector<Document> SearchServer::FindAllDocuments(Policy& policy,
+                                                     const Query& query,
+                                                     DocumentPredicate document_predicate) const {
     constexpr size_t N_THREADS = 4;
     ConcurrentMap<int, double> document_to_relevance(N_THREADS);
 
-    auto func_to_plus = [this, &document_to_relevance, document_predicate] (std::string_view sv) {
-            if(word_to_document_freqs_.count(sv) == 0) {return;}
-            double inverse_document_freq = ComputeWordInverseDocumentFreq(sv);
-            for(const auto& [document_id, term_freq] : word_to_document_freqs_.at(sv)) {
+    auto func_to_plus = [this, &document_to_relevance, document_predicate] (std::string_view word) {
+            if(word_to_document_freqs_.count(word) == 0) {
+                return;
+            }
+            double inverse_document_freq = ComputeWordInverseDocumentFreq(word);
+            for(const auto& [document_id, term_freq] : word_to_document_freqs_.at(word)) {
                 const auto& document_data = documents_.at(document_id);
                 if(document_predicate(document_id, document_data.status, document_data.rating)) {
                     document_to_relevance[document_id].ref_to_value += term_freq*inverse_document_freq;
@@ -184,17 +188,17 @@ std::vector<Document> SearchServer::FindAllDocuments(Policy& policy, const Query
             }
         };
 
-    auto func_to_minus = [this, &document_to_relevance] (std::string_view sv) {
-            if(word_to_document_freqs_.count(sv) == 0) {return;}
-            for(const auto& [document_id, _] : word_to_document_freqs_.at(sv)) {
+    auto func_to_minus = [this, &document_to_relevance] (std::string_view word) {
+            if(word_to_document_freqs_.count(word) == 0) {
+                return;
+            }
+            for(const auto& [document_id, _] : word_to_document_freqs_.at(word)) {
                 document_to_relevance.Erase(document_id);
             }
         };
         
-    std::for_each(policy, query.plus_words.begin(), query.plus_words.end(),
-                  func_to_plus);
-    std::for_each(policy, query.minus_words.begin(), query.minus_words.end(),
-                  func_to_minus);
+    std::for_each(policy, query.plus_words.begin(), query.plus_words.end(), func_to_plus);
+    std::for_each(policy, query.minus_words.begin(), query.minus_words.end(), func_to_minus);
     std::map<int, double> matched_ids = document_to_relevance.BuildOrdinaryMap();
     std::vector<Document> matched_documents;
     matched_documents.reserve(matched_ids.size());
@@ -211,14 +215,15 @@ void SearchServer::RemoveDocument(ExecutionPolicy&& policy, int id) {
     if(document_ids_.count(id) == 0) {
         return;
     }
-    
     std::for_each(policy, documents_word_info_.at(id).begin(),
                   documents_word_info_.at(id).end(),
-                  [this, id](const auto& word_rel) {if(word_to_document_freqs_.at(word_rel.first).size() <= 1) {
-                                                    word_to_document_freqs_.erase(word_rel.first);
-                                                    words_.erase(words_.find(std::string(word_rel.first))); } else {
-                                                    word_to_document_freqs_.at(word_rel.first).erase(id);} });
-    
+                  [this, id](const auto& word_rel) {
+                      if(word_to_document_freqs_.at(word_rel.first).size() <= 1) {
+                          word_to_document_freqs_.erase(word_rel.first);
+                          words_.erase(words_.find(std::string(word_rel.first)));
+                      }
+                      else {
+                          word_to_document_freqs_.at(word_rel.first).erase(id);}});
     documents_word_info_.erase(id);
     documents_.erase(id);
     document_ids_.erase(id);

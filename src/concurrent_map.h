@@ -10,20 +10,19 @@ template <typename Key, typename Value>
 class ConcurrentMap {
 public:
     static_assert(std::is_integral_v<Key>, "ConcurrentMap supports only integer keys"s);
-    
-    explicit ConcurrentMap(size_t bucket_count) : n_ranges_(bucket_count),
-                                                  raw_vault_(bucket_count),
-                                                  mutexes_(bucket_count) {
+    struct Bucket {
+        std::mutex m;
+        std::map<Key, Value> bucket_vault;
+    };
+    explicit ConcurrentMap(size_t bucket_count) : buckets_(bucket_count) {
     }
     
     struct Access {
         Access() = delete;
         explicit Access(const Key& key, 
-                        std::vector<std::mutex>& vm,
-                        std::vector<std::map<Key, Value>>& data,
-                        size_t n) : access_key(static_cast<uint64_t>(key) % n),
-                                    guard(vm[access_key]),
-                                    ref_to_value((data[access_key])[key]) {
+                        std::vector<Bucket>& buckets) : access_key(static_cast<uint64_t>(key) % buckets.size()),
+                                                        guard(buckets[access_key].m),
+                                                        ref_to_value(buckets[access_key].bucket_vault[key]) {
         }
         uint64_t access_key;
         std::unique_lock<std::mutex> guard;
@@ -31,25 +30,23 @@ public:
     };
 
     Access operator[](const Key& key) {
-        return Access(key, mutexes_, raw_vault_, n_ranges_);
+        return Access(key, buckets_);
     }
     
     void Erase(Key key) {
-        Access tmp_access_obj(key, mutexes_, raw_vault_, n_ranges_);
-        raw_vault_[tmp_access_obj.access_key].erase(key);
+        Access tmp_access_obj(key, buckets_);
+        buckets_[tmp_access_obj.access_key].bucket_vault.erase(key);
     }
 
     std::map<Key, Value> BuildOrdinaryMap() {
        std::map<Key, Value> result;
-       for(size_t i = 0; i < n_ranges_; ++i) {
-           std::lock_guard guard(mutexes_[i]);
-           result.merge(raw_vault_[i]);
+       for(size_t i = 0; i < buckets_.size(); ++i) {
+           std::lock_guard guard(buckets_[i].m);
+           result.merge(buckets_[i].bucket_vault);
        }
        return result;
     }
 
 private:
-    size_t n_ranges_;
-    std::vector<typename std::map<Key, Value>> raw_vault_;
-    std::vector<std::mutex> mutexes_;
+    std::vector<Bucket> buckets_;
 };
