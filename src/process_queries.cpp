@@ -1,11 +1,13 @@
 #include "process_queries.h"
 
+
+
 std::vector<std::vector<Document>> ProcessQueries (
     const SearchServer& search_server,
     const std::vector<std::string>& queries) {
 
     std::vector<std::vector<Document>> result(queries.size());
-    std::transform(std::execution::par, queries.begin(), queries.end(),
+    std::transform(std::execution::seq, queries.begin(), queries.end(),
                    result.begin(), [&search_server] (const auto& query) {
                    return std::move(FindTopDocuments(search_server, query));});
     

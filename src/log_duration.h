@@ -17,7 +17,7 @@ public:
 
     explicit LogDuration(const std::string& id, std::ostream& os) : os_ptr_(&os), id_(id) {
     }
-    explicit LogDuration(const std::string id) : os_ptr_(&std::cerr), id_(id) {
+    explicit LogDuration(const std::string& id) : os_ptr_(&std::cerr), id_(id) {
     }
     ~LogDuration() {
         using namespace std::chrono;

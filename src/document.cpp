@@ -1,11 +1,17 @@
 #include "document.h"
 
-#include <iostream>
-
-Document::Document(int id, double relevance, int rating) : 
-    id(id),
+Document::Document(double relevance, const Document& other) : 
+    id(other.id),
     relevance(relevance),
-    rating(rating) {
+    rating(other.rating),
+    status(other.status),
+    document_words_with_freqs(other.document_words_with_freqs) {
+}
+Document::Document(int arg_id, double arg_relevance, int arg_rating, DocumentStatus arg_status) :
+    id(arg_id),
+    relevance(arg_relevance),
+    rating(arg_rating),
+    status(arg_status) {
 }
 
 std::ostream& operator<<(std::ostream& out, const Document& document) {

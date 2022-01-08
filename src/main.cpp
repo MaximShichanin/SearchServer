@@ -1,6 +1,7 @@
-#include "search_server.h"
 #include "log_duration.h"
 #include "process_queries.h"
+#include "search_server.h"
+#include "test_example_functions.h"
 
 #include <execution>
 #include <iostream>
@@ -68,6 +69,7 @@ void Test(string mark, const SearchServer& search_server, const vector<string>& 
 #define TEST(policy) Test(#policy, search_server, queries, execution::policy)
 
 int main() {
+    TestSearchServer::main_test();
     mt19937 generator;
 
     const auto dictionary = GenerateDictionary(generator, 1000, 10);

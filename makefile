@@ -1,46 +1,43 @@
 COMPILER := g++
-CFLAGS := -O3 -Werror -Wall -std=c++17
+CFLAGS := -O3 -std=c++17 -Werror -Wall
 
-SRCDIR = src
-OBJDIR = obj
-BINDIR = bin
+SRC_DIR := ./src/
+OBJ_DIR := ./obj/
+BIN_DIR := ./bin/
+TMP_DIR := ./tmp/
 
-vpath %.cpp $(SRCDIR)
-vpath %.h $(SRCDIR)
-vpath %.o $(OBJDIR)
-vpath % $(BINDIR)
+vpath %.cpp $(SRC_DIR)
+vpath %.h $(SRC_DIR)
+vpath %.o $(OBJ_DIR)
+vpath %.d $(TMP_DIR)
+vpath % $(BIN_DIR)
 
-PROG_NAME = search_server
-SRC = $(notdir $(wildcard $(SRCDIR)/*.cpp))
-OBJ = $(patsubst %.cpp, %.o, $(SRC))
-OBJ_D = $(addprefix $(OBJDIR)/, $(OBJ))
+SRC := $(notdir $(wildcard $(SRC_DIR)*.cpp))
+OBJ := $(patsubst %.cpp, %.o, $(SRC))
+D_FILES := $(addprefix $(TMP_DIR), $(patsubst %.cpp, %.d, $(SRC)))
 
-all: $(PROG_NAME)
+RESULT := search_server
 
-$(PROG_NAME): $(OBJ_D) | $(BINDIR)
-	$(COMPILER) $(CFLAGS) -o $(BINDIR)/$@ $^ -ltbb -lpthread
+.PHONY : all
+all: $(RESULT)
 
-$(OBJDIR)/document.o: document.h
-$(OBJDIR)/main.o: search_server.h request_queue.h paginator.h test_example_functions.h remove_duplicates.h
-$(OBJDIR)/process_queries.o: search_server.h document.h
-$(OBJDIR)/read_input_functions.o: read_input_functions.h
-$(OBJDIR)/request_queue.o: request_queue.h
-$(OBJDIR)/remove_duplicates.o: search_server.h remove_duplicates.h
-$(OBJDIR)/search_server.o: search_server.h document.h concurrent_map.h string_processing.h
-$(OBJDIR)/string_processing.o: string_processing.h
-$(OBJDIR)/test_example_functions.o: search_server.h log_duration.h string_processing.h remove_duplicates.h process_queries.h
+$(RESULT): $(OBJ) | $(BIN_DIR)
+	$(COMPILER) $(CFLAGS) $(addprefix $(OBJ_DIR), $(notdir $^)) -o $(addprefix $|, $@)
 
-$(OBJ_D): $(OBJDIR)/%.o: $(SRCDIR)/%.cpp | $(OBJDIR)
-	$(COMPILER) $(CFLAGS) -c -o $@ $<
+$(OBJ): %.o: $(SRC_DIR)%.cpp | $(OBJ_DIR)
+	$(COMPILER) $(CFLAGS) -c $< -o $(addprefix $(OBJ_DIR), $@)
 
-$(OBJDIR):
-	mkdir $@
-$(BINDIR):
-	mkdir $@
+include $(D_FILES)
 
-.PHONY: clean_obj clean
+$(D_FILES): $(TMP_DIR)%.d: $(SRC_DIR)%.cpp | $(TMP_DIR)
+	$(COMPILER) -MM $< -MF $@
+
+$(BIN_DIR) :
+	-mkdir $@
+$(OBJ_DIR) :
+	-mkdir $@
+$(TMP_DIR) :
+	-mkdir $@
+.PHONY: clean
 clean:
-	-rm -r $(OBJDIR)/*
-	-rm -r $(BINDIR)/*
-clean_obj:
-	-rm -r $(OBJDIR)/*
+	-rm -r $(OBJ_DIR) $(BIN_DIR) $(TMP_DIR)
