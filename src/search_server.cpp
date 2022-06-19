@@ -45,13 +45,13 @@ void SearchServer::AddDocument(int document_id, std::string_view document,
         std::string_view word_key(word_data.name);
         if(word_key.empty()) {
             auto node = words_.extract(word);
-            node.mapped() = {std::string(word), {document_id}};
+            node.mapped() = WordData{std::string(word), {{document_id, invert_freq}, }};
             node.key() = node.mapped().name;
             auto I = words_.insert(std::move(node));
             word_key = I.position->first;
         }
         else {
-            word_data.ids_.insert(document_id);
+            word_data.ids_freqs_[document_id] += invert_freq;
         }
         documents_[document_id].document_words_with_freqs[word_key] += invert_freq;
     }
@@ -156,7 +156,7 @@ SearchServer::Query SearchServer::ParseQuery(std::string_view text) const {
 }
 
 double SearchServer::ComputeWordInverseDocumentFreq(std::string_view word) const {
-    return std::log(SearchServer::GetDocumentCount() * 1.0 / words_.at(word).ids_.size());
+    return std::log(SearchServer::GetDocumentCount() * 1.0 / words_.at(word).ids_freqs_.size());
 }
 
 std::map<std::string_view, double> SearchServer::GetWordFrequencies(int id) const {

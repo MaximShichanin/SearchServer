@@ -61,7 +61,7 @@ public:
 private:
     struct WordData {
         std::string name;
-        std::set<int> ids_;
+        std::map<int, double> ids_freqs_;
     };
     
     struct QueryWord {
@@ -109,7 +109,7 @@ std::vector<Document> SearchServer::FindTopDocuments(Policy& policy, std::string
     
     const auto query = ParseQuery(raw_query);
     auto matched_documents = FindAllDocuments(policy, query, document_predicate);
-    std::sort(matched_documents.begin(), matched_documents.end(), [](const Document& lhs, const Document& rhs) {
+    std::sort(policy, matched_documents.begin(), matched_documents.end(), [](const Document& lhs, const Document& rhs) {
         if (std::abs(lhs.relevance - rhs.relevance) < 1e-6) {
             return lhs.rating > rhs.rating;
         }
@@ -182,7 +182,7 @@ std::vector<Document> SearchServer::FindAllDocuments(Policy& policy,
                 return;
             }
             double inverse_document_freq = ComputeWordInverseDocumentFreq(word);
-            for(const auto document_id : words_.at(word).ids_) {
+            for(const auto& [document_id, _] : words_.at(word).ids_freqs_) {
                 const auto& document_data = documents_.at(document_id);
                 if(document_predicate(document_id, document_data.status, document_data.rating)) {
                     document_to_relevance[document_id].ref_to_value += 
@@ -194,7 +194,7 @@ std::vector<Document> SearchServer::FindAllDocuments(Policy& policy,
             if(words_.count(word) == 0) {
                 return;
             }
-            for(const auto document_id : words_.at(word).ids_) {
+            for(const auto& [document_id, _] : words_.at(word).ids_freqs_) {
                 document_to_relevance.Erase(document_id);
             }
         };
@@ -202,6 +202,7 @@ std::vector<Document> SearchServer::FindAllDocuments(Policy& policy,
     std::for_each(policy, query.plus_words.begin(), query.plus_words.end(), func_to_plus);
     std::for_each(policy, query.minus_words.begin(), query.minus_words.end(), func_to_minus);
     auto matched_ids = document_to_relevance.BuildOrdinaryMap();
+    
     std::vector<Document> matched_documents;
     matched_documents.reserve(matched_ids.size());
     for (const auto& [id, relevance] : matched_ids) {
@@ -219,8 +220,8 @@ void SearchServer::RemoveDocument(ExecutionPolicy&& policy, int id) {
     }
     std::for_each(policy, documents_.at(id).document_words_with_freqs.begin(),
                   documents_.at(id).document_words_with_freqs.end(),
-                  [this, id] (const auto& word_data) {if(words_.at(word_data.first).ids_.size() <= 1) {words_.erase(word_data.first);}
-                                                      else {words_.at(word_data.first).ids_.erase(id);}});
+                  [this, id] (const auto& word_data) {if(words_.at(word_data.first).ids_freqs_.size() <= 1) {words_.erase(word_data.first);}
+                                                      else {words_.at(word_data.first).ids_freqs_.erase(id);}});
     documents_.erase(id);
 }
 
